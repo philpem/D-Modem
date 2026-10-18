@@ -36,6 +36,12 @@ limitations. Live-call acceptance can include `--verify-after-hold` to require
 fresh exact payloads after a carrier hold. Modem training remains intermittent;
 see the [Olinet investigation](docs/olinet-reliability.md).
 
+## Presentation demo
+
+Run `./demo.sh` on the `demo/presentation` branch. See the
+[presentation guide](demo/README.md) for the USR setup, audio selection and
+rehearsal results. Deferred debugging is tracked in [TODO.md](TODO.md).
+
 ## How it Works
 Traditional “controller-based” modems generally used a microcontroller and a DSP to handle all aspects of modem communication on the device itself.  Later, so-called “Winmodems” were introduced that allowed for field-programmable DSPs and moved the controller and other functionality into software running on the host PC.  This was followed by “pure software” modems that moved DSP functionality to the host as well.  The physical hardware of these softmodems was only used to connect to the phone network, and all processing was done in software. 
 
