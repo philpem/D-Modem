@@ -169,11 +169,23 @@ static void *rcMODEMtoSIP = NULL;
 static int rx_dump_fd = -1;
 static int rx8k_dump_fd = -1;
 static int tx_dump_fd = -1;
+static int tx8k_dump_fd = -1;
+
+static int audio_dump_open(const char *name)
+{
+	char path[PATH_MAX];
+	const char *dir = getenv("SLMODEMD_CAPTURE_DIR");
+	if (!dir || !*dir)
+		dir = "/tmp";
+	if (snprintf(path, sizeof(path), "%s/%s", dir, name) >= sizeof(path))
+		return -1;
+	return open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+}
 
 static void rx_dump_open(void)
 {
 	if (rx_dump_fd < 0) {
-		rx_dump_fd = open("/tmp/modem_rx.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		rx_dump_fd = audio_dump_open("modem_rx.raw");
 		if (rx_dump_fd < 0) {
 			ERR("rx_dump: cannot create /tmp/modem_rx.raw: %s\n", strerror(errno));
 		} else {
@@ -181,15 +193,17 @@ static void rx_dump_open(void)
 		}
 	}
 	if (rx8k_dump_fd < 0) {
-		rx8k_dump_fd = open("/tmp/modem_rx_8k.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		rx8k_dump_fd = audio_dump_open("modem_rx_8k.raw");
 		if (rx8k_dump_fd < 0) {
 			ERR("rx_dump: cannot create /tmp/modem_rx_8k.raw: %s\n", strerror(errno));
 		} else {
 			DBG("rx_dump: opened /tmp/modem_rx_8k.raw\n");
 		}
 	}
+	if (tx8k_dump_fd < 0)
+		tx8k_dump_fd = audio_dump_open("modem_tx_8k.raw");
 	if (tx_dump_fd < 0) {
-		tx_dump_fd = open("/tmp/modem_tx.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		tx_dump_fd = audio_dump_open("modem_tx.raw");
 		if (tx_dump_fd < 0) {
 			ERR("rx_dump: cannot create /tmp/modem_tx.raw: %s\n", strerror(errno));
 		} else {
@@ -218,6 +232,10 @@ static void tx_dump_write(const char *buf, int samples)
 
 static void rx_dump_close(void)
 {
+	if (tx8k_dump_fd >= 0) {
+		close(tx8k_dump_fd);
+		tx8k_dump_fd = -1;
+	}
 	if (rx_dump_fd >= 0) {
 		close(rx_dump_fd);
 		rx_dump_fd = -1;
@@ -1077,6 +1095,8 @@ static int mdm_device_write(struct device_struct *dev, const char *buf, int size
 	size = sizeof(socket_frame.data.audio.buf)/2;
 	RcFixed_Resample(rcMODEMtoSIP, (char*)buf, MODEM_FRAMESIZE, socket_frame.data.audio.buf, &size);
 	size *= 2;
+	if (tx8k_dump_fd >= 0)
+		write(tx8k_dump_fd, socket_frame.data.audio.buf, size);
 
 	if (size != sizeof(socket_frame.data.audio.buf)) {
 		ERR("frame buffer size doesn't match\n");

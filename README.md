@@ -18,6 +18,24 @@ https://www.aon.com/cyber-solutions/aon_cyber_labs/introducing-d-modem-a-softwar
 ## Building
 You'll need Linux and a working 32-bit development environment (gcc -m32 needs to work, Debian-based systems can install: git gcc build-essential libc6-dev-i386 gcc-multilib pkg-config), along with PJSIP's dependencies (OpenSSL).  Then run 'make' from the top-level directory.
 
+## Reconstructed DSP integration
+
+An optional source-built DSP and diagnostic tools are available. Clone
+[`philpem/slmodem_dsp_re`](https://github.com/philpem/slmodem_dsp_re) beside
+this checkout, or select it with `DSP_ROOT=/absolute/path`.
+
+```sh
+make DSP=original       # supplied DSP remains the default
+make DSP=reconstructed  # compile the separate reconstruction
+make variants           # retain both daemon executables
+```
+
+See the [integration guide](docs/reconstructed-dsp.md) for dependencies,
+checks, hardware/pair/replay runners, optional observation builds and measured
+limitations. Live-call acceptance can include `--verify-after-hold` to require
+fresh exact payloads after a carrier hold. Modem training remains intermittent;
+see the [Olinet investigation](docs/olinet-reliability.md).
+
 ## How it Works
 Traditional “controller-based” modems generally used a microcontroller and a DSP to handle all aspects of modem communication on the device itself.  Later, so-called “Winmodems” were introduced that allowed for field-programmable DSPs and moved the controller and other functionality into software running on the host PC.  This was followed by “pure software” modems that moved DSP functionality to the host as well.  The physical hardware of these softmodems was only used to connect to the phone network, and all processing was done in software. 
 

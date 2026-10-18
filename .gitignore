@@ -4,6 +4,11 @@ pjsip.install
 slmodemd/.build_profile
 d-modem
 /slmodemd/slmodemd
+/slmodemd/slmodemd-original
+/slmodemd/slmodemd-reconstructed
+/slmodemd/slmodemd-reconstructed-ec
+pjproject-*/**/*.depend
+/slmodemd/slmodemd-*.tmp
 /slmodemd/modem_test
 .vscode/launch.json
 libc.so.6
@@ -15,3 +20,8 @@ CLAUDE.md
 !dsplibs.o
 !dsplibs.o.bak
 slmodemd.log
+
+/slmodemd/slmodemd-reconstructed-hs
+/scratch/
+__pycache__/
+*.pyc

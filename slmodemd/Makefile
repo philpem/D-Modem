@@ -14,6 +14,7 @@
 ###########################################################################
 
 ARCH64:=$(shell uname -m | sed -e '/amd64/s//x86_64/' | grep -c x86_64)
+.DEFAULT_GOAL := all
 
 ifeq ($(ARCH64), 0)
 CC:= gcc
@@ -32,12 +33,32 @@ modem-objs:= \
 	modem_param.o modem_debug.o homolog_data.o
 dp-objs:= dp_sinus.o dp_dummy.o dp_v8_shim.o dp_vpcm_shim.o v8_open_stub.o
 sysdep-objs:= sysdep_common.o
-all-objs:= modem_cmdline.o $(modem-objs) $(dp-objs) dsplibs.o $(sysdep-objs) 
+DSP ?= original
+DSP_ROOT ?= ../../slmodem_dsp_re
+ifeq ($(DSP),original)
+DSP_OBJECT := dsplibs.o
+else ifeq ($(DSP),reconstructed)
+DSP_OBJECT := $(DSP_ROOT)/build/dmodem/dsplibs.o
+else ifeq ($(DSP),reconstructed-ec)
+DSP_OBJECT := $(DSP_ROOT)/build/dmodem-ec/dsplibs.o
+else ifeq ($(DSP),reconstructed-hs)
+DSP_OBJECT := $(DSP_ROOT)/build/dmodem-hs/dsplibs.o
+else
+$(error DSP must be original, reconstructed, reconstructed-ec or reconstructed-hs)
+endif
+all-objs:= modem_cmdline.o $(modem-objs) $(dp-objs) $(DSP_OBJECT) $(sysdep-objs)
+
+# The reconstruction is a complete source build; no proprietary object is
+# included. The bridge's VPCMXF_Create interposer retains its existing ABI.
+ifneq ($(filter reconstructed reconstructed-ec reconstructed-hs,$(DSP)),)
+$(DSP_OBJECT): FORCE
+	python3 ../tools/build_dsp.py --source $(DSP_ROOT) $(if $(filter reconstructed-ec,$(DSP)),--ec-probe) $(if $(filter reconstructed-hs,$(DSP)),--handshake-probe)
+endif
 
 all: slmodemd modem_test
 
-slmodemd: modem_main.o $(all-objs)
-modem_test: modem_test.o $(all-objs)
+slmodemd: modem_main.o $(all-objs) FORCE
+modem_test: modem_test.o $(all-objs) FORCE
 
 ifdef SUPPORT_ALSA
 CFLAGS+= -DSUPPORT_ALSA=1
@@ -50,16 +71,19 @@ endif
 endif
 
 slmodemd:
-	$(CC) -o slmodemd modem_main.o $(all-objs) $(LFLAGS)
+	$(CC) -no-pie -o slmodemd modem_main.o $(all-objs) $(LFLAGS) -lm
+	cp slmodemd slmodemd-$(DSP).tmp
+	mv -f slmodemd-$(DSP).tmp slmodemd-$(DSP)
 
 modem_test:
-	$(CC) -o modem_test modem_test.o $(all-objs) $(LFLAGS)
+	$(CC) -no-pie -o modem_test modem_test.o $(all-objs) $(LFLAGS) -lm
 
 clean:
 	$(RM) slmodemd modem_test modem_main.o modem_cmdline.o modem_test.o $(modem-objs) $(dp-objs) $(sysdep-objs)
 	$(RM) *~ *.orig *.rej
 
-.PHONY: all dep generic-dep clean clean-build-profile
+.PHONY: all dep generic-dep clean clean-build-profile FORCE
+FORCE:
 
 
 #
