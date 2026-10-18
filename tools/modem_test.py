@@ -19,7 +19,6 @@ from modem_diagnostics import collect as collect_diagnostics
 
 from integration_paths import ROOT, DSP_ROOT
 sys.path.insert(0, str(DSP_ROOT / 'testbench'))
-import atprobe
 import terminal_io as call
 
 
@@ -57,6 +56,7 @@ def configure_serial_controls(end, ends, kind, hardware_flow='none'):
 
 
 def identify(path):
+    import atprobe
     ok, _, detail = atprobe.probe(path, 2)
     if not ok:
         raise RuntimeError(f'{path}: {detail}')
@@ -339,6 +339,7 @@ def main():
         print(json.dumps(identify(args.tty), indent=2))
         return 0
     if args.hardware_query:
+        import atprobe
         if any(not text.upper().startswith('AT') or '\r' in text or '\n' in text
                for text in args.hardware_query):
             ap.error('--hardware-query requires a single AT command per argument')
@@ -353,6 +354,7 @@ def main():
             os.close(fd)
         return 0
     if args.diagnose:
+        import atprobe
         identity = identify(args.tty)
         fd = atprobe.open_raw(args.tty)
         try:

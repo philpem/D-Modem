@@ -6,6 +6,14 @@ Run everything from this checkout with one shell script:
 ./demo.sh --dsp-root /path/to/slmodem_dsp_re --secret /path/to/account.secret
 ```
 
+The demo uses system Python 3 and its standard library; no venv or pip packages
+are needed. With the binaries already built, the DSP source checkout is also
+unnecessary:
+
+```sh
+./demo.sh --no-build --secret /path/to/account.secret
+```
+
 The default is the reconstructed DSP. The script builds it and the SIP endpoint,
 identifies the USRobotics Courier, calls SIP extension 4242 from the USR, and
 auto-answers with slmodem. It displays commands and responses from both modems,

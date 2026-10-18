@@ -127,7 +127,10 @@ def main():
     ap.add_argument('--kind', required=True, choices=QUERIES)
     ap.add_argument('--out', required=True, type=Path)
     args = ap.parse_args()
-    from modem_test import atprobe
+    import sys
+    from integration_paths import DSP_ROOT
+    sys.path.insert(0, str(DSP_ROOT / 'testbench'))
+    import atprobe
     fd = atprobe.open_raw(args.tty)
     try:
         time.sleep(.3)

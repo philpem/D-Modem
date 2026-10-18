@@ -255,6 +255,10 @@ def main():
     args = ap.parse_args()
     if args.line_delay < 0 or args.wait <= 0:
         ap.error('line delay must be nonnegative and wait must be positive')
+    if not args.no_build and args.dsp == 'reconstructed' and not (args.dsp_root/'Makefile').is_file():
+        ap.error('--dsp-root must point to the reconstruction checkout when building; use --no-build for prepared binaries')
+    if not args.secret.is_file():
+        ap.error('SIP credential file not found; select it with --secret /absolute/path/to/account.secret')
     os.environ['DSP_ROOT'] = str(args.dsp_root.resolve())
     os.environ.setdefault('SLMODEMD_DSP_DEBUG', '0')
     from modem_test import start_daemon, save_audio
