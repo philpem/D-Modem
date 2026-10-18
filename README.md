@@ -38,7 +38,9 @@ see the [Olinet investigation](docs/olinet-reliability.md).
 
 ## Presentation demo
 
-Run `./demo.sh` on the `demo/presentation` branch. See the
+Run `./demo.sh` for the linear view or `./demo-split.sh` for the split view
+on the `demo/presentation-split` branch. The original linear version is retained
+on `demo/presentation`. See the
 [presentation guide](demo/README.md) for the USR setup, audio selection and
 rehearsal results. Deferred debugging is tracked in [TODO.md](TODO.md).
 

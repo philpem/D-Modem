@@ -14,6 +14,20 @@ unnecessary:
 ./demo.sh --no-build --secret /path/to/account.secret
 ```
 
+For the split terminal view, use `./demo-split.sh` with the same options. It
+shows USR traffic at top left, SLModem traffic at top right, and live slmodem
+diagnostics plus `DEMO:` messages below. Transmissions are orange and received
+lines teal in a 256-colour terminal. Three seconds after hangup it switches to
+`ATI6` on the left and `ATI11` on the right. The final reports stay visible until
+Enter or q; the serial port and daemon have already been released.
+
+Use a terminal of at least 80 columns by 24 rows. Tab selects a pane; arrows,
+Page Up/Page Down and Home/End scroll it. End resumes following new output.
+The split view enables DSP diagnostics by default; `--dsp-debug 0` disables them
+and other numeric values select a debug mask. An existing `SLMODEMD_DSP_DEBUG`
+environment value is respected unless `--dsp-debug` is supplied. The original
+linear view remains available through `./demo.sh`.
+
 The default is the reconstructed DSP. The script builds it and the SIP endpoint,
 identifies the USRobotics Courier, calls SIP extension 4242 from the USR, and
 auto-answers with slmodem. It displays commands and responses from both modems,
@@ -33,8 +47,8 @@ Other useful options:
 - `--line-delay 1`: leave a second between verified song lines.
 - `--audio pulse --audio-device SINK`: select a PulseAudio/PipeWire output.
 - `--audio alsa --audio-device default`: use ALSA playback instead.
-- `--extended-stats`: also display the USR channel probe, training signature
-  and configuration reports.
+- `--extended-stats`: also save the USR channel probe, training signature
+  and configuration reports (displayed in the linear view).
 - `--plain`: omit terminal colour codes.
 - `--out /path/to/new/directory`: select the saved rehearsal directory.
 - `--song /path/to/ascii.txt`: use another text; at least two lines are needed.
@@ -76,3 +90,9 @@ completing in about 65 seconds. These are demonstrated runs, not a guarantee
 of modem training reliability. An earlier rehearsal exposed the missing fixed-DTE
 setting; its failed transfer was reported and retained before that setup was
 corrected.
+
+The split-view rehearsal on the same date also passed all 36 lines / 2,049
+bytes, played 14.26 seconds of negotiation audio, and displayed both real
+USR reports after a measured 3.02-second pause. Resizing, pane selection,
+scrolling and dismissal were checked in a private terminal session. The
+original linear branch remains unchanged at `16877b43`.

@@ -42,6 +42,15 @@ class Console:
     def stage(self, text):
         self.show('DEMO', '*', text)
 
+    def poll(self):
+        pass
+
+    def statistics(self):
+        pass
+
+    def finish(self, result):
+        pass
+
 
 class Modem:
     def __init__(self, name, fd, session):
@@ -93,6 +102,7 @@ class Session:
     def pump(self, seconds, until=None):
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
+            self.console.poll()
             ready, _, _ = select.select([e.fd for e in self.ends], [], [], min(.05, max(0, deadline-time.monotonic())))
             for end in self.ends:
                 if end.fd in ready:
@@ -251,6 +261,9 @@ def main():
     ap.add_argument('--audio-device')
     ap.add_argument('--no-build', action='store_true')
     ap.add_argument('--plain', action='store_true')
+    ap.add_argument('--split', action='store_true', help='three-pane live view, then side-by-side USR statistics')
+    ap.add_argument('--dsp-debug', type=lambda value: int(value, 0),
+                    help='DSP debug level (split default: 2147483647; linear default: 0)')
     ap.add_argument('--extended-stats', action='store_true')
     args = ap.parse_args()
     if args.line_delay < 0 or args.wait <= 0:
@@ -259,21 +272,42 @@ def main():
         ap.error('--dsp-root must point to the reconstruction checkout when building; use --no-build for prepared binaries')
     if not args.secret.is_file():
         ap.error('SIP credential file not found; select it with --secret /absolute/path/to/account.secret')
+    if args.dsp_debug is not None and not 0 <= args.dsp_debug <= 0xffffffff:
+        ap.error('--dsp-debug must be an unsigned 32-bit value')
+    if args.split and (not sys.stdin.isatty() or not sys.stdout.isatty()):
+        ap.error('--split requires an interactive terminal; use demo.sh for the linear view')
+    args.song_lines = [s for s in args.song.read_text(encoding='ascii').splitlines() if s.strip()]
+    if len(args.song_lines) < 2:
+        ap.error('song must contain at least two non-empty ASCII lines')
     os.environ['DSP_ROOT'] = str(args.dsp_root.resolve())
-    os.environ.setdefault('SLMODEMD_DSP_DEBUG', '0')
+    if args.dsp_debug is not None:
+        os.environ['SLMODEMD_DSP_DEBUG'] = str(args.dsp_debug)
+    else:
+        os.environ.setdefault('SLMODEMD_DSP_DEBUG', '2147483647' if args.split else '0')
+    if args.split:
+        import curses
+        result = curses.wrapper(lambda screen: run(args, screen))
+        print(f'Demo {"passed" if result == 0 else "failed"}. Reports: {args.out.resolve()}')
+        return result
+    return run(args)
+
+
+def run(args, screen=None):
     from modem_test import start_daemon, save_audio
     from terminal_io import open_raw
     from modem_diagnostics import collect
-    song = [s for s in args.song.read_text(encoding='ascii').splitlines() if s.strip()]
-    if len(song) < 2:
-        ap.error('song must contain at least two non-empty ASCII lines')
+    song = args.song_lines
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=False, mode=0o700)
     result = dict(status='failed', payload=[], audio_requested=args.audio != 'off')
     proc = audio = None
     ends = []
     with (out/'transcript.log').open('w') as transcript, (out/'slmodemd.log').open('w') as daemon_log:
-        console = Console(transcript, args.plain)
+        if screen is None:
+            console = Console(transcript, args.plain)
+        else:
+            from presentation_view import SplitConsole
+            console = SplitConsole(transcript, screen, out/'slmodemd.log', args.plain)
         session = Session(console)
         try:
             console.stage('USR + slmodem | > sent to modem, < received from modem')
@@ -332,6 +366,10 @@ def main():
                 session.pump(args.line_delay)
             console.stage('Hang up, then read the USR last-call statistics before any reset')
             hangup(session, sw, hw)
+            if args.split:
+                console.stage('Call ended. Showing USR statistics in three seconds...')
+                session.pump(3)
+                console.statistics()
             report = collect('usr', lambda cmd: session.query(hw, cmd) if
                              args.extended_stats or cmd in ('ATI6', 'ATI11') else None)
             (out/'usr-statistics.json').write_text(json.dumps(report, indent=2)+'\n')
@@ -365,7 +403,11 @@ def main():
             for end in ends:
                 os.close(end.fd)
             save_audio(out)
+            if args.split:
+                console.poll()
+                result['diagnostic_lines_displayed'] = console.debug_lines
             (out/'result.json').write_text(json.dumps(result, indent=2)+'\n')
+            console.finish(result)
     return 0 if result['status'] == 'passed' else 1
 
 
