@@ -1,10 +1,15 @@
 PJSIP_DIR=pjproject-2.15.1
 PKG_CONFIG_PATH=pjsip.install/lib/pkgconfig
+DSP ?= original
+DSP_ROOT ?= $(CURDIR)/slmodem_dsp_re
+override DSP_ROOT := $(abspath $(DSP_ROOT))
+export DSP_ROOT
 
 all: d-modem slmodemd
 
 $(PKG_CONFIG_PATH)/libpjproject.pc:
-	(cd $(PJSIP_DIR); [ -f ./config.status ] || ./configure --prefix=`pwd`/../pjsip.install --disable-video)
+	(cd $(PJSIP_DIR); ./configure --prefix="$(CURDIR)/pjsip.install" --disable-video)
+	$(MAKE) -C $(PJSIP_DIR) dep
 	$(MAKE) -C $(PJSIP_DIR) && \
 	$(MAKE) -C $(PJSIP_DIR) install
 
@@ -13,6 +18,15 @@ d-modem: d-modem.c $(PKG_CONFIG_PATH)/libpjproject.pc slmodemd/modem.h
 
 slmodemd:
 	$(MAKE) -C slmodemd
+
+variants:
+	$(MAKE) -C slmodemd DSP=original
+	$(MAKE) -C slmodemd DSP=reconstructed
+	$(MAKE) d-modem
+
+check:
+	python3 tools/test_modem_io.py
+	python3 tools/test_modem_diagnostics.py
 
 clean:
 	rm -f d-modem.o d-modem
@@ -23,4 +37,4 @@ realclean: clean
 	rm -rf pjsip.install/*
 	
 
-.PHONY: all clean realclean slmodemd
+.PHONY: all clean realclean slmodemd variants check

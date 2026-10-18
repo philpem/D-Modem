@@ -47,6 +47,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -56,6 +57,9 @@
 
 #include <modem.h>
 #include <modem_debug.h>
+#ifdef DSP_RECONSTRUCTED
+#include <dsplib/encode.h>
+#endif
 
 unsigned int modem_debug_level=0;
 unsigned int modem_debug_logging=0;
@@ -118,7 +122,9 @@ int dsplibs_debug_printf(const char *fmt, ...)
         va_list args;
         int len;
 	va_start(args, fmt);
-	len = debug_vprintf(dsplibs_debug_level, fmt, args);
+	/* DSP gates already select the verbosity. A DSP level higher than the
+	 * daemon's level must not make the daemon discard those messages. */
+	len = debug_vprintf(0, fmt, args);
         va_end(args);
         return len;
 }
@@ -137,6 +143,17 @@ int modem_debug_printf(const char *fmt, ...)
 int modem_debug_init(const char *suffix)
 {
 	dsplibs_debug_level = modem_debug_level;
+	if (getenv("SLMODEMD_DSP_DEBUG"))
+		dsplibs_debug_level = strtoul(getenv("SLMODEMD_DSP_DEBUG"), NULL, 0);
+
+#ifdef DSP_RECONSTRUCTED
+	if (getenv("SLMODEMD_DSP_PLAIN"))
+		dsplib_encode_plain = atoi(getenv("SLMODEMD_DSP_PLAIN")) != 0;
+	fprintf(stderr, "DSP diagnostics: level=%u, plain=%s\n",
+		dsplibs_debug_level, dsplib_encode_plain ? "yes" : "no");
+#else
+	fprintf(stderr, "DSP diagnostics: level=%u\n", dsplibs_debug_level);
+#endif
 	if(modem_debug_logging) {
 		char path_name[PATH_MAX];
 		const char *name;

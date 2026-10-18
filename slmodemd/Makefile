@@ -14,6 +14,7 @@
 ###########################################################################
 
 ARCH64:=$(shell uname -m | sed -e '/amd64/s//x86_64/' | grep -c x86_64)
+.DEFAULT_GOAL := all
 
 ifeq ($(ARCH64), 0)
 CC:= gcc
@@ -23,6 +24,7 @@ CC:= gcc -m32
 endif
 
 RM:= rm -f
+OBJCOPY ?= objcopy
 
 CFLAGS+= -Wall -g -O -I. -DCONFIG_DEBUG_MODEM
 
@@ -32,12 +34,41 @@ modem-objs:= \
 	modem_param.o modem_debug.o homolog_data.o
 dp-objs:= dp_sinus.o dp_dummy.o dp_v8_shim.o dp_vpcm_shim.o v8_open_stub.o
 sysdep-objs:= sysdep_common.o
-all-objs:= modem_cmdline.o $(modem-objs) $(dp-objs) dsplibs.o $(sysdep-objs) 
+DSP ?= original
+DSP_ROOT ?= ../slmodem_dsp_re
+override DSP_ROOT := $(abspath $(DSP_ROOT))
+ifeq ($(DSP),original)
+DSP_OBJECT := dsplibs.o
+else ifeq ($(DSP),reconstructed)
+DSP_OBJECT := $(DSP_ROOT)/build/dmodem/dsplibs.o
+else
+$(error DSP must be original or reconstructed)
+endif
+all-objs:= modem_cmdline.o $(modem-objs) $(dp-objs) $(DSP_OBJECT) $(sysdep-objs)
+
+# The reconstruction is a complete source build; no proprietary object is
+# included. The bridge's VPCMXF_Create interposer retains its existing ABI.
+ifeq ($(DSP),reconstructed)
+CFLAGS += -DDSP_RECONSTRUCTED -I$(DSP_ROOT)/include
+ifeq ($(wildcard $(DSP_ROOT)/Makefile),)
+$(error Initialise slmodem_dsp_re with git submodule update --init, or set DSP_ROOT)
+endif
+DSP_SOURCES := $(shell cd $(DSP_ROOT) && find src -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.S' \) | sort)
+DSP_OBJECTS := $(addprefix $(DSP_ROOT)/build/,$(addsuffix .o,$(basename $(DSP_SOURCES))))
+DSP_CREATOR := $(DSP_ROOT)/build/src/pump/v90/VpcmFloModem.o
+DSP_PRIVATE_CREATOR := $(DSP_ROOT)/build/dmodem/VpcmFloModem.o
+
+$(DSP_OBJECT): FORCE
+	+$(MAKE) -C $(DSP_ROOT) $(patsubst $(DSP_ROOT)/%,%,$(DSP_OBJECTS))
+	mkdir -p $(@D)
+	$(OBJCOPY) --redefine-sym VPCMXF_Create=__blob_VPCMXF_Create $(DSP_CREATOR) $(DSP_PRIVATE_CREATOR)
+	$(LD) -m elf_i386 -r -o $@ $(subst $(DSP_CREATOR),$(DSP_PRIVATE_CREATOR),$(DSP_OBJECTS))
+endif
 
 all: slmodemd modem_test
 
-slmodemd: modem_main.o $(all-objs)
-modem_test: modem_test.o $(all-objs)
+slmodemd: modem_main.o $(all-objs) FORCE
+modem_test: modem_test.o $(all-objs) FORCE
 
 ifdef SUPPORT_ALSA
 CFLAGS+= -DSUPPORT_ALSA=1
@@ -50,16 +81,19 @@ endif
 endif
 
 slmodemd:
-	$(CC) -o slmodemd modem_main.o $(all-objs) $(LFLAGS)
+	$(CC) -no-pie -o slmodemd modem_main.o $(all-objs) $(LFLAGS) -lm
+	cp slmodemd slmodemd-$(DSP).tmp
+	mv -f slmodemd-$(DSP).tmp slmodemd-$(DSP)
 
 modem_test:
-	$(CC) -o modem_test modem_test.o $(all-objs) $(LFLAGS)
+	$(CC) -no-pie -o modem_test modem_test.o $(all-objs) $(LFLAGS) -lm
 
 clean:
 	$(RM) slmodemd modem_test modem_main.o modem_cmdline.o modem_test.o $(modem-objs) $(dp-objs) $(sysdep-objs)
 	$(RM) *~ *.orig *.rej
 
-.PHONY: all dep generic-dep clean clean-build-profile
+.PHONY: all dep generic-dep clean clean-build-profile FORCE
+FORCE:
 
 
 #

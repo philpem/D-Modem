@@ -1,0 +1,3 @@
+[submodule "slmodem_dsp_re"]
+	path = slmodem_dsp_re
+	url = https://github.com/philpem/slmodem_dsp_re.git
