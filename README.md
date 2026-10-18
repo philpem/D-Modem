@@ -18,6 +18,29 @@ https://www.aon.com/cyber-solutions/aon_cyber_labs/introducing-d-modem-a-softwar
 ## Building
 You'll need Linux and a working 32-bit development environment (gcc -m32 needs to work, Debian-based systems can install: git gcc build-essential libc6-dev-i386 gcc-multilib pkg-config), along with PJSIP's dependencies (OpenSSL).  Then run 'make' from the top-level directory.
 
+## Reconstructed DSP
+
+The source DSP is included as the `slmodem_dsp_re` submodule:
+
+```sh
+git submodule update --init slmodem_dsp_re
+make DSP=reconstructed
+```
+
+Use `git clone --recurse-submodules` to fetch it with D-Modem. A non-recursive
+clone can still build the supplied DSP with `make` (`DSP=original`, the default).
+`make variants` retains both daemon executables. Set `DSP_ROOT=/absolute/path`
+to build another reconstruction checkout. Both daemon builds require the
+32-bit development environment above; the source build also needs 32-bit G++
+(`g++-multilib` on Debian).
+
+`SLMODEMD_DSP_DEBUG` selects DSP verbosity; `2147483647` enables all diagnostic
+levels. For source builds, `SLMODEMD_DSP_PLAIN=1` makes encoded diagnostics
+readable. `SLMODEMD_CAPTURE_DIR` selects the RX/TX raw audio directory
+(default `/tmp`; 8 kHz filenames end in `_8k`, others are 9.6 kHz signed-16 mono).
+Investigation details and limitations are recorded in
+[issue #1](https://github.com/philpem/D-Modem/issues/1).
+
 ## How it Works
 Traditional “controller-based” modems generally used a microcontroller and a DSP to handle all aspects of modem communication on the device itself.  Later, so-called “Winmodems” were introduced that allowed for field-programmable DSPs and moved the controller and other functionality into software running on the host PC.  This was followed by “pure software” modems that moved DSP functionality to the host as well.  The physical hardware of these softmodems was only used to connect to the phone network, and all processing was done in software. 
 
