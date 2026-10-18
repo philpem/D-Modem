@@ -649,9 +649,9 @@ int main(int argc, char *argv[]) {
 	pj_status_t status;
 	struct socket_frame sip_socket_frame = { 0 };
 
-	char *sip_domain = NULL;
-	char *sip_user = NULL;
-	char *sip_pass = NULL;
+	char *sip_domain = getenv("SIP_SERVER");
+	char *sip_user = getenv("SIP_USER");
+	char *sip_pass = getenv("SIP_PASSWORD");
 	int direct_call = 1;
 
 	static struct option long_options[] = {

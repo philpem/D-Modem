@@ -41,6 +41,26 @@ readable. `SLMODEMD_CAPTURE_DIR` selects the RX/TX raw audio directory
 Investigation details and limitations are recorded in
 [issue #1](https://github.com/philpem/D-Modem/issues/1).
 
+## Call tools
+
+`tools/modem_test.py` identifies hardware and verifies payloads in both directions:
+
+```sh
+python3 tools/modem_test.py --tty /dev/ttyUSB0 --identify
+python3 tools/modem_test.py --tty /dev/ttyUSB0 --originator hardware \
+  --dial 4242 --secret /path/to/account.secret --dsp reconstructed \
+  --verify-after-hold --hold 60 --out scratch/call-1
+make check
+```
+
+The tools require Python 3. The external credential file has `server:`,
+`extension:` and `secret:` fields. The launcher passes these through
+`SIP_SERVER`, `SIP_USER` and `SIP_PASSWORD`; endpoint command-line options
+override these environment defaults.
+Each call uses a new output directory for logs, audio and last-call diagnostics.
+`--verify-after-hold` checks fresh payloads after the hold; carrier alone is
+insufficient. Use `tools/modem_diagnostics.py --help` to collect reports separately.
+
 ## How it Works
 Traditional “controller-based” modems generally used a microcontroller and a DSP to handle all aspects of modem communication on the device itself.  Later, so-called “Winmodems” were introduced that allowed for field-programmable DSPs and moved the controller and other functionality into software running on the host PC.  This was followed by “pure software” modems that moved DSP functionality to the host as well.  The physical hardware of these softmodems was only used to connect to the phone network, and all processing was done in software. 
 

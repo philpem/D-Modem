@@ -24,6 +24,10 @@ variants:
 	$(MAKE) -C slmodemd DSP=reconstructed
 	$(MAKE) d-modem
 
+check:
+	python3 tools/test_modem_io.py
+	python3 tools/test_modem_diagnostics.py
+
 clean:
 	rm -f d-modem.o d-modem
 	$(MAKE) -C slmodemd clean
@@ -33,4 +37,4 @@ realclean: clean
 	rm -rf pjsip.install/*
 	
 
-.PHONY: all clean realclean slmodemd variants
+.PHONY: all clean realclean slmodemd variants check
