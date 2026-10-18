@@ -59,7 +59,9 @@ The tools require Python 3. The external credential file has `server:`,
 override these environment defaults.
 Each call uses a new output directory for logs, audio and last-call diagnostics.
 `--verify-after-hold` checks fresh payloads after the hold; carrier alone is
-insufficient. Use `tools/modem_diagnostics.py --help` to collect reports separately.
+insufficient. For three-wire serial cables, `--hardware-flow xonxoff` enables
+software backpressure at both the modem and host for these ASCII tests.
+Use `tools/modem_diagnostics.py --help` to collect reports separately.
 
 ## How it Works
 Traditional “controller-based” modems generally used a microcontroller and a DSP to handle all aspects of modem communication on the device itself.  Later, so-called “Winmodems” were introduced that allowed for field-programmable DSPs and moved the controller and other functionality into software running on the host PC.  This was followed by “pure software” modems that moved DSP functionality to the host as well.  The physical hardware of these softmodems was only used to connect to the phone network, and all processing was done in software. 

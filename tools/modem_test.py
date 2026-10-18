@@ -47,10 +47,12 @@ def configure_serial_controls(end, ends, kind, hardware_flow='none'):
     # establish that the modem physically receives DTR or RTS.
     commands = ['AT&D0']
     if kind == 'usr':
-        commands += (['AT&H0', 'AT&I0', 'AT&R1'] if hardware_flow == 'none'
-                     else ['AT&H1', 'AT&I0', 'AT&R2'])
+        commands += {'none': ['AT&H0', 'AT&I0', 'AT&R1'],
+                     'rtscts': ['AT&H1', 'AT&I0', 'AT&R2'],
+                     'xonxoff': ['AT&H2', 'AT&I2', 'AT&R1']}[hardware_flow]
     else:
-        commands += ['AT&K0' if hardware_flow == 'none' else 'AT&K3']
+        commands += [{'none': 'AT&K0', 'rtscts': 'AT&K3',
+                      'xonxoff': 'AT&K4'}[hardware_flow]]
     for text in commands:
         command(end, ends, text)
 
@@ -214,6 +216,12 @@ def run_call(args):
                 attrs = termios.tcgetattr(hw.fd)
                 attrs[2] |= termios.CRTSCTS
                 termios.tcsetattr(hw.fd,termios.TCSANOW,attrs)
+            if args.hardware_flow == 'xonxoff':
+                attrs = termios.tcgetattr(hw.fd)
+                attrs[0] |= termios.IXON | termios.IXOFF
+                attrs[6][termios.VSTART] = b'\x11'
+                attrs[6][termios.VSTOP] = b'\x13'
+                termios.tcsetattr(hw.fd, termios.TCSANOW, attrs)
             command(hw, ends, 'ATS0=0')
             command(sw, ends, 'ATS0=0')
             origin, answer = (sw, hw) if args.originator == 'dmodem' else (hw, sw)
@@ -316,7 +324,8 @@ def main():
     ap.add_argument('--bytes', type=int, default=256)
     ap.add_argument('--data-wait', type=float, default=30,
                     help='maximum wait for writing/receiving each payload')
-    ap.add_argument('--hardware-flow',choices=('none','rtscts'),default='none')
+    ap.add_argument('--hardware-flow',choices=('none','rtscts','xonxoff'),default='none',
+                    help='serial backpressure (xonxoff supports three-wire cables and the ASCII test payloads)')
     ap.add_argument('--payload-bps',type=int,default=0,
                     help='pace payloads to this bit rate (0: unpaced); useful with three-wire serial adapters')
     ap.add_argument('--hardware-init', default='')
